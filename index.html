@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PharmaTrack — Smart Medicine Finder</title>
+    <meta name="description" content="Find medicines instantly across verified pharmacies near you. Check stock, prices, and get directions in seconds.">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Leaflet Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- ===== BACKGROUND BLOBS ===== -->
+    <div class="bg-canvas" aria-hidden="true">
+        <div class="bg-blob bg-blob-1"></div>
+        <div class="bg-blob bg-blob-2"></div>
+        <div class="bg-blob bg-blob-3"></div>
+    </div>
+
+    <!-- ===== NAVBAR ===== -->
+    <header class="navbar" id="navbar">
+        <div class="nav-inner">
+            <!-- Logo -->
+            <a href="#" class="nav-logo" id="navHome" aria-label="PharmaTrack Home">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <span class="logo-text">Pharma<span class="logo-accent">Track</span></span>
+            </a>
+
+            <!-- Desktop Nav -->
+            <nav class="nav-links" role="navigation" aria-label="Main navigation">
+                <a href="#" class="nav-item active" id="navHomeLink">
+                    <i class="fa-solid fa-house-medical"></i> Home
+                </a>
+                <a href="#" class="nav-item" id="navPharmaciesLink">
+                    <i class="fa-solid fa-map-location-dot"></i> Pharmacies
+                </a>
+                <a href="#" class="nav-item" id="navDashboardLink" style="display:none;">
+                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                </a>
+            </nav>
+
+            <!-- Right Controls -->
+            <div class="nav-actions">
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+                    <i class="fa-solid fa-moon" id="themeIcon"></i>
+                </button>
+                <button class="btn btn-primary btn-sm" id="loginBtn" aria-label="Login">
+                    <i class="fa-solid fa-user"></i> Login
+                </button>
+                <button class="btn btn-outline btn-sm" id="logoutBtn" style="display:none;" aria-label="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+
+                <!-- Mobile Hamburger -->
+                <button class="hamburger" id="hamburger" aria-label="Toggle mobile menu" aria-expanded="false">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Drawer -->
+        <div class="mobile-nav" id="mobileNav" aria-hidden="true">
+            <a href="#" class="nav-item active" id="mobileNavHome">
+                <i class="fa-solid fa-house-medical"></i> Home
+            </a>
+            <a href="#" class="nav-item" id="mobileNavPharmacies">
+                <i class="fa-solid fa-map-location-dot"></i> Pharmacies
+            </a>
+            <a href="#" class="nav-item" id="mobileNavDashboard" style="display:none;">
+                <i class="fa-solid fa-chart-line"></i> Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="page-wrapper">
+
+        <!-- ======================== SEARCH VIEW ======================== -->
+        <div id="searchView">
+            <!-- Hero Section -->
+            <section class="hero-section" aria-labelledby="heroTitle">
+
+                <h1 class="hero-title" id="heroTitle">
+                    Find Medicines<br>
+                    <span class="gradient-text">Instantly Near You</span>
+                </h1>
+
+                <p class="hero-subtitle">
+                    Check real-time stock availability across verified pharmacies. No calls, no hassle — just instant answers.
+                </p>
+
+                <!-- Search Bar -->
+                <div class="search-wrapper">
+                    <div class="search-box" id="searchBox" role="search">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input
+                            type="text"
+                            id="searchInput"
+                            placeholder="Search medicines, symptoms, or interactions..."
+                            autocomplete="off"
+                            aria-label="Search medicines"
+                        >
+                        <div class="search-spinner" id="searchSpinner" aria-hidden="true">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        </div>
+                        <button class="search-clear-btn" id="searchClearBtn" aria-label="Clear search" style="display:none;">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div class="quick-actions" role="group" aria-label="Quick actions">
+                    <button class="qa-btn qa-primary" id="qaCheckInteraction">
+                        <div class="qa-icon"><i class="fa-solid fa-pills"></i></div>
+                        <div class="qa-label">
+                            <span class="qa-title">Check Interaction</span>
+                            <span class="qa-desc">Drug safety check</span>
+                        </div>
+                    </button>
+                    <button class="qa-btn" id="qaScanPrescription">
+                        <div class="qa-icon qa-icon-teal"><i class="fa-solid fa-file-prescription"></i></div>
+                        <div class="qa-label">
+                            <span class="qa-title">Scan Prescription</span>
+                            <span class="qa-desc">Upload & find meds</span>
+                        </div>
+                    </button>
+                    <button class="qa-btn" id="qaViewHistory">
+                        <div class="qa-icon qa-icon-purple"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                        <div class="qa-label">
+                            <span class="qa-title">View History</span>
+                            <span class="qa-desc">Recent searches</span>
+                        </div>
+                    </button>
+                </div>
+            </section>
+            
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" aria-label="Medicine search results" aria-live="polite">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-illustration" aria-hidden="true">
+                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                    </div>
+                    <h3>Start your search</h3>
+                    <p>Type a medicine name or pharmacy to see real-time availability.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- ======================== PHARMACIES MAP VIEW ======================== -->
+        <div id="pharmaciesView" style="display:none;">
+
+            <!-- ── Location Prompt Card ── -->
+            <div id="locationPrompt" class="location-prompt-card">
+                <div class="location-prompt-icon" aria-hidden="true">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                </div>
+                <h2 class="location-prompt-title">Find Pharmacies Near You</h2>
+                <p class="location-prompt-subtitle">Share your location or enter an address to discover real nearby pharmacies in real time.</p>
+                <div class="location-prompt-actions">
+                    <button class="btn btn-primary location-btn-geo" id="useMyLocationBtn">
+                        <i class="fa-solid fa-location-crosshairs"></i> Use My Location
+                    </button>
+                    <div class="location-divider"><span>or enter an address</span></div>
+                    <div class="address-input-row">
+                        <div class="address-input-wrap">
+                            <i class="fa-solid fa-magnifying-glass address-search-icon" aria-hidden="true"></i>
+                            <input type="text" id="addressInput" class="form-input address-input"
+                                placeholder="e.g., Banjara Hills, Hyderabad..." autocomplete="off"
+                                aria-label="Enter address to search pharmacies">
+                        </div>
+                        <button class="btn btn-outline" id="searchAddressBtn" aria-label="Search address">
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    <div class="address-error" id="addressError" style="display:none;" role="alert">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        Location not found. Try a more specific address or landmark.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Map Section (shown after location chosen) ── -->
+            <div id="mapSection" style="display:none;">
+                <section class="view-header">
+                    <div>
+                        <h2 class="view-title">Nearby <span class="gradient-text">Pharmacies</span></h2>
+                        <p class="view-subtitle" id="locationLabel">Pharmacies near your current location.</p>
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="changeLocationBtn" aria-label="Change location">
+                        <i class="fa-solid fa-location-dot"></i> Change Location
+                    </button>
+                </section>
+
+                <div class="map-wrapper">
+                    <div class="map-loader" id="mapLoader" style="display:none;" role="status" aria-live="polite">
+                        <div class="map-loader-inner">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i>
+                            <span>Finding nearby pharmacies...</span>
+                        </div>
+                    </div>
+                    <div class="map-container">
+                        <div id="map" aria-label="Map of nearby pharmacies"></div>
+                    </div>
+                </div>
+
+                <div class="pharmacy-count-bar" id="pharmacyCountBar" style="display:none;" aria-live="polite">
+                    <i class="fa-solid fa-store" id="pharmacyCountIcon" aria-hidden="true"></i>
+                    <span id="pharmacyCountText">–</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ======================== DASHBOARD VIEW ======================== -->
+        <div id="dashboardView" style="display:none;">
+            <section class="view-header">
+                <div>
+                    <h2 class="view-title">Shopkeeper <span class="gradient-text">Dashboard</span></h2>
+                    <p class="view-subtitle">Manage your pharmacy inventory in real time.</p>
+                </div>
+                <div class="dashboard-header-actions">
+                    <!-- Shop Open/Close Toggle -->
+                    <div class="shop-toggle-wrap" title="Toggle your shop open or closed">
+                        <label class="shop-toggle-label" id="shopStatusLabel">Shop is Open</label>
+                        <label class="toggle-switch" aria-label="Toggle shop open or closed">
+                            <input type="checkbox" id="shopStatusToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" id="addNewMedBtn" aria-label="Add new medicine">
+                        <i class="fa-solid fa-plus"></i> Add Medicine
+                    </button>
+                </div>
+            </section>
+
+            <!-- Add Medicine Form -->
+            <section class="glass-panel add-med-panel" id="addMedFormContainer" style="display:none;" aria-label="Add medicine form">
+                <div class="panel-header">
+                    <h3><i class="fa-solid fa-capsules"></i> Add New Medicine</h3>
+                </div>
+                <form id="addMedForm" novalidate>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="medName">Medicine Name</label>
+                            <input type="text" id="medName" class="form-input" placeholder="e.g., Paracetamol 500mg" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="medType">Type</label>
+                            <input type="text" id="medType" class="form-input" placeholder="e.g., Tablet, Syrup" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="medPrice">Price (₹)</label>
+                            <div class="price-input-wrapper">
+                                <span class="currency-symbol">₹</span>
+                                <input type="number" id="medPrice" class="form-input price-input" step="0.01" min="0" required placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="medStockQty">Stock Quantity (units)</label>
+                            <input type="number" id="medStockQty" class="form-input" min="0" placeholder="e.g., 50" required>
+                            <small class="form-hint">≤0 = Out of Stock &nbsp;|&nbsp; 1–20 = Low Stock &nbsp;|&nbsp; 21+ = In Stock</small>
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label for="medDescription">Description <span style="font-weight:400;color:var(--text-muted)">(why it is used)</span></label>
+                            <textarea id="medDescription" class="form-input" rows="2" placeholder="e.g., Used for relieving headache and fever..."></textarea>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-ghost" id="cancelAddMedBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Medicine
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Inventory Grid -->
+            <section class="inventory-section" aria-label="Inventory">
+                <h3 class="section-title">Your Inventory</h3>
+                <div class="results-grid" id="inventoryGrid" role="list">
+                    <!-- Injected by JS -->
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- ===== INTERACTION CHECK MODAL ===== -->
+    <div class="modal-overlay" id="interactionModal" role="dialog" aria-modal="true" aria-labelledby="interactionModalTitle">
+        <div class="modal-card">
+            <div class="modal-hd">
+                <div class="modal-icon-wrap modal-icon-blue">
+                    <i class="fa-solid fa-pills"></i>
+                </div>
+                <div>
+                    <h2 id="interactionModalTitle">Drug Interaction Checker</h2>
+                    <p>Enter two medicines to check for known interactions.</p>
+                </div>
+                <button class="modal-close-btn" id="closeInteractionModal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-bd">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label for="drug1">First Medicine</label>
+                    <input type="text" id="drug1" class="form-input" placeholder="e.g., Aspirin">
+                </div>
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label for="drug2">Second Medicine</label>
+                    <input type="text" id="drug2" class="form-input" placeholder="e.g., Ibuprofen">
+                </div>
+                <button class="btn btn-primary btn-full" id="checkInteractionBtn">
+                    <i class="fa-solid fa-circle-check"></i> Check Interaction
+                </button>
+                <div class="interaction-result" id="interactionResult" style="display:none;" role="alert"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== HISTORY MODAL ===== -->
+    <div class="modal-overlay" id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
+        <div class="modal-card">
+            <div class="modal-hd">
+                <div class="modal-icon-wrap modal-icon-purple">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div>
+                    <h2 id="historyModalTitle">Search History</h2>
+                    <p>Your recently searched medicines.</p>
+                </div>
+                <button class="modal-close-btn" id="closeHistoryModal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-bd" id="historyList">
+                <div class="empty-state" style="padding:32px 0;">
+                    <i class="fa-solid fa-clock-rotate-left" style="font-size:2rem;opacity:.3;margin-bottom:12px;"></i>
+                    <p>No search history yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== LOGIN MODAL ===== -->
+    <div class="modal-overlay" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+        <div class="modal-card">
+            <div class="modal-hd">
+                <div class="modal-icon-wrap modal-icon-blue">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div>
+                    <h2 id="loginModalTitle">Welcome Back</h2>
+                    <p>Sign in to access your account.</p>
+                </div>
+                <button class="modal-close-btn" id="closeModalBtn" aria-label="Close modal">&times;</button>
+            </div>
+
+            <div class="modal-bd">
+                <!-- Role Selection -->
+                <div id="roleSelectionArea">
+                    <p class="role-prompt">Select your role to continue</p>
+                    <div class="role-grid">
+                        <button class="role-card" data-role="user" id="customerLoginBtn">
+                            <div class="role-card-icon">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                            <span class="role-card-title">Customer</span>
+                            <span class="role-card-desc">Browse medicines &amp; pharmacies</span>
+                        </button>
+                        <button class="role-card" id="showShopkeeperFormBtn">
+                            <div class="role-card-icon role-card-icon-teal">
+                                <i class="fa-solid fa-store"></i>
+                            </div>
+                            <span class="role-card-title">Shopkeeper</span>
+                            <span class="role-card-desc">Manage your inventory</span>
+                        </button>
+                    </div>
+                    <div class="register-link-row">
+                        <p>New shopkeeper? <button class="link-btn" id="openRegisterBtn">Register your pharmacy &rarr;</button></p>
+                    </div>
+                </div>
+
+                <!-- Shopkeeper Login Form -->
+                <div id="shopkeeperLoginForm" style="display:none;">
+                    <button class="back-link" id="backToRolesBtn">
+                        <i class="fa-solid fa-arrow-left"></i> Back to roles
+                    </button>
+                    <form id="skLoginForm" novalidate>
+                        <div class="form-group" style="margin-bottom:16px;">
+                            <label for="skEmail">Email</label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-envelope input-icon"></i>
+                                <input type="email" id="skEmail" class="form-input input-with-icon" placeholder="Enter your email" required autocomplete="email">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <label for="skPassword">Password</label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-lock input-icon"></i>
+                                <input type="password" id="skPassword" class="form-input input-with-icon" placeholder="Enter password" required>
+                            </div>
+                        </div>
+                        <div class="login-error" id="loginError" style="display:none;" role="alert">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            Incorrect username or password.
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" style="margin-top:20px;">
+                            <i class="fa-solid fa-right-to-bracket"></i> Sign In
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== REGISTER MODAL ===== -->
+    <div class="modal-overlay" id="registerModal" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
+        <div class="modal-card modal-card-wide">
+            <div class="modal-hd">
+                <div class="modal-icon-wrap modal-icon-teal">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <div>
+                    <h2 id="registerModalTitle">Register Your Pharmacy</h2>
+                    <p>Create a shopkeeper account to manage your inventory.</p>
+                </div>
+                <button class="modal-close-btn" id="closeRegisterModal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-bd">
+                <form id="registerForm" novalidate>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="regName">Full Name</label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-user input-icon"></i>
+                                <input type="text" id="regName" class="form-input input-with-icon" placeholder="Your full name" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="regShop">Pharmacy / Shop Name</label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-store input-icon"></i>
+                                <input type="text" id="regShop" class="form-input input-with-icon" placeholder="e.g., City Medicals" required>
+                            </div>
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label for="regAddress">Shop Address</label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-location-dot input-icon"></i>
+                                <input type="text" id="regAddress" class="form-input input-with-icon" placeholder="Full address of your pharmacy" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="regEmail">Email</label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-envelope input-icon"></i>
+                                <input type="email" id="regEmail" class="form-input input-with-icon" placeholder="your@email.com" autocomplete="email" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPhone">Phone Number</label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-phone input-icon"></i>
+                                <input type="tel" id="regPhone" class="form-input input-with-icon" placeholder="e.g., +91 98765 43210">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPassword">Password</label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-lock input-icon"></i>
+                                <input type="password" id="regPassword" class="form-input input-with-icon" placeholder="Min. 6 characters" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="regConfirm">Confirm Password</label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-lock input-icon"></i>
+                                <input type="password" id="regConfirm" class="form-input input-with-icon" placeholder="Repeat password" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="register-error" id="registerError" style="display:none;" role="alert">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span id="registerErrorMsg">Error message.</span>
+                    </div>
+                    <div class="form-actions" style="margin-top:20px;">
+                        <button type="button" class="btn btn-ghost" id="backToLoginBtn">
+                            <i class="fa-solid fa-arrow-left"></i> Back to Login
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-store"></i> Register Pharmacy
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TOAST NOTIFICATION ===== -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="logo-icon logo-icon-sm">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <span>PharmaTrack</span>
+            </div>
+            <p class="footer-copy">&copy; 2026 PharmaTrack. Built with care for your health.</p>
+            <div class="footer-links">
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script type="module" src="scripts.js"></script>
+</body>
+
+</html>
